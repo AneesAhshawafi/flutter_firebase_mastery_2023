@@ -1,16 +1,26 @@
-# flutter_firebase_mastery_2023
+# Mastering Firebase With Flutter (2023) 🚀
 
-A new Flutter project.
+![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)
+![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)
+![Dart](https://img.shields.io/badge/Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white)
 
-## Getting Started
+This repository contains my progress and implementation of the **Mastering Firebase With Flutter** course. It serves as a practical guide to building scalable mobile applications with a robust backend.
 
-This project is a starting point for a Flutter application.
+## 📚 Course Information
+- **Course Name:** Mastering Firebase With Flutter (2023)
+- **Instructor:** Wael Abo Hamza
+- **Direct Link:** [Watch on YouTube](https://youtube.com/playlist?list=PL93xoMrxRJIvHhxhB21YzzeimEEzzAz6g)
 
-A few resources to get you started if this is your first Flutter project:
+## 🎯 Learning Objectives
+- Master Firebase Project Configuration for Android/iOS.
+- Implement secure User Authentication.
+- Advanced Cloud Firestore operations (CRUD & Queries).
+- Real-time data synchronization.
+- File storage and management with Firebase Storage.
+- Push Notifications using Firebase Cloud Messaging (FCM).
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## 📖 Course Contents
+- **Introduction & Setup:** Intro to Firebase 2023, Firebase CLI & FlutterFire configuration, Initialization in Flutter.
+- **Authentication:** Email & Password Authentication, UI Design for Login/Signup, User State Management.
+- **Cloud Firestore:** Database Architecture, Adding and Setting Data, Real-time Streams vs Future Get, Updating and Deleting Records.
+- **Advanced Features:** Firebase Storage (Image Uploads), Firebase Cloud Messaging (Topics & Tokens), Security Rules.
