@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "895746574423",
+    "project_id": "flutter-firebase-mastery-2023",
+    "storage_bucket": "flutter-firebase-mastery-2023.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:895746574423:android:18409cb2407372d190fb12",
+        "android_client_info": {
+          "package_name": "com.example.flutter_firebase_mastery_2023"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "895746574423-k8v6a3duai22hs49prr7dpkvrkgnnlcu.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.flutter_firebase_mastery_2023",
+            "certificate_hash": "e2aec98a60cb23c21b65af53576394c98736b9db"
+          }
+        },
+        {
+          "client_id": "895746574423-nk1p5nq2408rlf99sfaf2tvs62lmm6k7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCFXLkvW4j4O6Eq55L272gzBD0YJTE9CmQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "895746574423-nk1p5nq2408rlf99sfaf2tvs62lmm6k7.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
