@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:awesome_dialog/awesome_dialog.dart';
+import 'package:flutter_firebase_mastery_2023/component/textformfield.dart';
 import 'package:flutter_firebase_mastery_2023/notes/addnote.dart';
 import 'package:flutter_firebase_mastery_2023/notes/viewnote.dart';
 
@@ -17,7 +18,8 @@ class _NotesState extends State<Notes> {
   GlobalKey<ScaffoldState> scaffoldKey = GlobalKey();
   List<QueryDocumentSnapshot> notes = [];
   int currentIndex = 0;
-  TextEditingController editNoteTextController = TextEditingController();
+  TextEditingController editNoteTitleTextController = TextEditingController();
+  TextEditingController editNoteContentTextController = TextEditingController();
 
   @override
   void initState() {
@@ -27,7 +29,8 @@ class _NotesState extends State<Notes> {
 
   @override
   void dispose() {
-    editNoteTextController.dispose();
+    editNoteTitleTextController.dispose();
+    editNoteContentTextController.dispose();
     super.dispose();
   }
 
@@ -46,7 +49,7 @@ class _NotesState extends State<Notes> {
   //     _loading = false;
   //   });
   //   // querySnapshot.docs.forEach((doc) {
-  //   //     print(doc["name"]);
+  //   //     print(doc["Title"]);
   //   // });
   // }
 
@@ -74,7 +77,7 @@ class _NotesState extends State<Notes> {
             FloatingActionButton(
               heroTag: "noteRefreshBtn",
               onPressed: () {
-                // Navigator.pushNamedAndRemoveUntil(
+                // Navigator.pushTitledAndRemoveUntil(
                 //   context,
                 //   "home",
                 //   (route) => false,
@@ -205,7 +208,7 @@ class _NotesState extends State<Notes> {
                                                         .collection("notes")
                                                         .doc(notes[index].id)
                                                         .delete();
-                                                    // Navigator.pushReplacementNamed(
+                                                    // Navigator.pushReplacementTitled(
                                                     //   context,
                                                     //   "home",
                                                     // );
@@ -224,15 +227,19 @@ class _NotesState extends State<Notes> {
                                             SizedBox(width: 10),
                                             InkWell(
                                               onTap: () {
-                                                editNoteTextController.text =
-                                                    notes[index]["note"];
+                                                editNoteTitleTextController
+                                                        .text =
+                                                    notes[index]["title"];
+                                                editNoteContentTextController
+                                                        .text =
+                                                    notes[index]["content"];
                                                 AwesomeDialog(
                                                   context: context,
                                                   dialogType:
                                                       DialogType.noHeader,
                                                   animType:
                                                       AnimType.bottomSlide,
-                                                  title: "Rename Category",
+                                                  title: "ReTitle Note",
                                                   body: Padding(
                                                     padding:
                                                         EdgeInsets.symmetric(
@@ -242,7 +249,7 @@ class _NotesState extends State<Notes> {
                                                     child: Column(
                                                       children: [
                                                         Text(
-                                                          "Rename Category",
+                                                          "ReTitle Note",
                                                           style: TextStyle(
                                                             fontSize: 18,
                                                             fontWeight:
@@ -250,30 +257,58 @@ class _NotesState extends State<Notes> {
                                                           ),
                                                         ),
                                                         SizedBox(height: 12),
-                                                        TextField(
-                                                          style: TextStyle(
-                                                            fontSize: 15,
-                                                            fontWeight:
-                                                                FontWeight.w500,
-                                                            color: Colors.black,
-                                                          ),
-                                                          controller:
-                                                              editNoteTextController,
-                                                          autofocus: true,
-                                                          decoration:
-                                                              InputDecoration(
-                                                                border:
-                                                                    OutlineInputBorder(),
-                                                                labelText:
-                                                                    "New Name",
-                                                              ),
+                                                        FormInput(
+                                                          label: "Note Title",
+                                                          hintText: "Enter Your Note Title",
+                                                          controller: editNoteTitleTextController,
                                                         ),
+                                                        FormInput(
+                                                          label: "Note Content",
+                                                          hintText: "Enter Your Note Content",
+                                                          controller: editNoteContentTextController,
+                                                          maxLines: 10,
+                                                        ),
+                                                        // TextField(
+                                                        //   style: TextStyle(
+                                                        //     fontSize: 15,
+                                                        //     fontWeight:
+                                                        //         FontWeight.w500,
+                                                        //     color: Colors.black,
+                                                        //   ),
+                                                        //   controller:
+                                                        //       editNoteTitleTextController,
+                                                        //   autofocus: true,
+                                                        //   decoration:
+                                                        //       InputDecoration(
+                                                        //         border:
+                                                        //             OutlineInputBorder(),
+                                                        //         labelText:
+                                                        //             "New Title",
+                                                        //       ),
+                                                        // ),
+                                                        // TextField(
+                                                        //   style: TextStyle(
+                                                        //     fontSize: 15,
+                                                        //     fontWeight:
+                                                        //         FontWeight.w500,
+                                                        //     color: Colors.black,
+                                                        //   ),
+                                                        //   controller:
+                                                        //       editNoteContentTextController,
+                                                        //   autofocus: true,
+                                                        //   decoration: InputDecoration(
+                                                        //     border:
+                                                        //         OutlineInputBorder(),
+                                                        //     labelText:
+                                                        //         "New Content",
+                                                        //   ),
+                                                        // ),
                                                       ],
                                                     ),
                                                   ),
                                                   btnOkText: "Save",
                                                   btnOkOnPress: () async {
-                                                    if (editNoteTextController
+                                                    if (editNoteTitleTextController
                                                         .text
                                                         .trim()
                                                         .isNotEmpty) {
@@ -288,13 +323,17 @@ class _NotesState extends State<Notes> {
                                                           .collection("notes")
                                                           .doc(notes[index].id)
                                                           .update({
-                                                            'note':
-                                                                editNoteTextController
+                                                            'Title':
+                                                                editNoteTitleTextController
+                                                                    .text
+                                                                    .trim(),
+                                                            'content':
+                                                                editNoteContentTextController
                                                                     .text
                                                                     .trim(),
                                                           });
                                                       // .set({
-                                                      //   'name': editNoteTextController.text
+                                                      //   'Title': editNoteTitleTextController.text
                                                       //       .trim(),
                                                       // },SetOptions(merge: true)
                                                       // );
@@ -315,8 +354,43 @@ class _NotesState extends State<Notes> {
                                           ],
                                         ),
                                       ),
+
                                       Expanded(
-                                        child: Text(notes[index]["note"]),
+                                        // width:double.infinity,
+                                        // height:100,
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            SizedBox(
+                                              width: double.infinity,
+                                              child: Text(
+                                                notes[index]["title"] ??
+                                                    "No Title",
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.blueAccent[700],
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 6),
+                                            Expanded(
+                                              child: Text(
+                                                notes[index]["content"] ??
+                                                    "No Content",
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  color: Colors.grey[800],
+                                                  height: 1.3,
+                                                ),
+                                                overflow: TextOverflow.fade,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -348,7 +422,7 @@ class CustomSearch extends SearchDelegate {
         onPressed: () {
           print(query);
           query = "";
-          // Navigator.of(context).pushReplacementNamed("searchdelegate");
+          // Navigator.of(context).pushReplacementTitled("searchdelegate");
         },
         icon: Icon(Icons.close),
       ),
@@ -361,7 +435,7 @@ class CustomSearch extends SearchDelegate {
   Widget? buildLeading(BuildContext context) {
     return IconButton(
       onPressed: () {
-        // Navigator.of(context).pushReplacementNamed("searchdelegate");
+        // Navigator.of(context).pushReplacementTitled("searchdelegate");
         close(context, null);
       },
       icon: Icon(Icons.arrow_back),

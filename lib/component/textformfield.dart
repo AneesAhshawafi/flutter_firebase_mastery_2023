@@ -6,6 +6,8 @@ class FormInput extends StatelessWidget {
   final TextEditingController? controller;
   final String? Function(String?)? validator;
   final bool obscureText;
+  final int? maxLines;
+  final int? minLines;
 
   const FormInput({
     super.key,
@@ -14,6 +16,8 @@ class FormInput extends StatelessWidget {
     this.controller,
     this.validator,
     this.obscureText = false,
+    this.maxLines,
+    this.minLines,
   });
 
   @override
@@ -21,13 +25,14 @@ class FormInput extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: EdgeInsets.only(bottom: 10, left: 20),
-          child: Text(label!, style: Theme.of(context).textTheme.bodyLarge),
-        ),
+        // Padding(
+        //   padding: EdgeInsets.only(bottom: 10, left: 20),
+        //   child: Text(label!, style: Theme.of(context).textTheme.bodyLarge),
+        // ),
         Padding(
           padding: EdgeInsets.only(bottom: 10, left: 20, right: 20),
           child: TextFormField(
+            autofocus:true,
             controller: controller,
             obscureText: obscureText,
             style:TextStyle(
@@ -48,8 +53,11 @@ class FormInput extends StatelessWidget {
                 controller!.text = value!;
               }
             },
-
+            maxLines: maxLines??1,
+            minLines:minLines??1,
             decoration: InputDecoration(
+
+              label:Text(label!, style: Theme.of(context).textTheme.bodyLarge),
               hintText: hintText!,
               hintStyle: Theme.of(context).textTheme.bodySmall,
               filled: true,

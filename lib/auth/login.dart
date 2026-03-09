@@ -27,7 +27,7 @@ class _LoginState extends State<Login> {
     // استبدل القيمة بـ Web Client ID من Firebase Console
     GoogleSignIn.instance.initialize(
       serverClientId:
-          '895746574423-nk1p5nq2408rlf99sfaf2tvs62lmm6k7.apps.googleusercontent.com',
+          '738224363416-alfiusqqmrcadvtb7l6l36c0knshrf0c.apps.googleusercontent.com',
     );
   }
 
