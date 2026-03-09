@@ -47,30 +47,31 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyCEfQ4NvFhof_Cq_CZjntFvVH2QRBHkJJs',
-    appId: '1:895746574423:web:bbf57aa240c9d60890fb12',
-    messagingSenderId: '895746574423',
-    projectId: 'flutter-firebase-mastery-2023',
-    authDomain: 'flutter-firebase-mastery-2023.firebaseapp.com',
-    storageBucket: 'flutter-firebase-mastery-2023.firebasestorage.app',
-    measurementId: 'G-W9MLPBC5HM',
+    apiKey: 'AIzaSyB42OzLWiZAApgOwiOLAoDVSppl0npKCEo',
+    appId: '1:738224363416:web:e2483bc8eac2f5cba13ded',
+    messagingSenderId: '738224363416',
+    projectId: 'note-app-7701c',
+    authDomain: 'note-app-7701c.firebaseapp.com',
+    storageBucket: 'note-app-7701c.firebasestorage.app',
+    measurementId: 'G-VHKYYNVYPP',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCFXLkvW4j4O6Eq55L272gzBD0YJTE9CmQ',
-    appId: '1:895746574423:android:18409cb2407372d190fb12',
-    messagingSenderId: '895746574423',
-    projectId: 'flutter-firebase-mastery-2023',
-    storageBucket: 'flutter-firebase-mastery-2023.firebasestorage.app',
+    apiKey: 'AIzaSyBlT-absWGVdPFRZeZ59pEc1LydWTqzWkg',
+    appId: '1:738224363416:android:6be648198a4e8919a13ded',
+    messagingSenderId: '738224363416',
+    projectId: 'note-app-7701c',
+    storageBucket: 'note-app-7701c.firebasestorage.app',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyCEfQ4NvFhof_Cq_CZjntFvVH2QRBHkJJs',
-    appId: '1:895746574423:web:a75d0a818ac914da90fb12',
-    messagingSenderId: '895746574423',
-    projectId: 'flutter-firebase-mastery-2023',
-    authDomain: 'flutter-firebase-mastery-2023.firebaseapp.com',
-    storageBucket: 'flutter-firebase-mastery-2023.firebasestorage.app',
-    measurementId: 'G-J6VRLH5F80',
+    apiKey: 'AIzaSyB42OzLWiZAApgOwiOLAoDVSppl0npKCEo',
+    appId: '1:738224363416:web:e0d699ba81adc33da13ded',
+    messagingSenderId: '738224363416',
+    projectId: 'note-app-7701c',
+    authDomain: 'note-app-7701c.firebaseapp.com',
+    storageBucket: 'note-app-7701c.firebasestorage.app',
+    measurementId: 'G-Y7LDBTYM8D',
   );
+
 }

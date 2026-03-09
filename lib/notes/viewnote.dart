@@ -1,8 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:awesome_dialog/awesome_dialog.dart';
-import 'package:flutter_firebase_mastery_2023/notes/addnote.dart';
+import 'package:flutter_firebase_mastery_2023/component/textformfield.dart';
 
 class ViewNote extends StatefulWidget {
   final String noteId;
@@ -17,35 +16,20 @@ class _ViewNoteState extends State<ViewNote> {
   GlobalKey<ScaffoldState> scaffoldKey = GlobalKey();
   DocumentSnapshot? noteData;
   int currentIndex = 0;
-  TextEditingController editNoteTextController = TextEditingController();
+  TextEditingController editNoteTitleTextController = TextEditingController();
+  TextEditingController editNoteContentTextController = TextEditingController();
 
   @override
   void initState() {
-    // getData();
     super.initState();
   }
 
   @override
   void dispose() {
-    editNoteTextController.dispose();
+    editNoteTitleTextController.dispose();
+    editNoteContentTextController.dispose();
     super.dispose();
   }
-
-  // getData() async {
-  //   setState(() {
-  //     _loading = true;
-  //   });
-  //   DocumentSnapshot documentSnapshot = await FirebaseFirestore.instance
-  //       .collection('categories')
-  //       .doc(widget.categoryId)
-  //       .collection("notes")
-  //       .doc(widget.noteId)
-  //       .get();
-  //   noteData = documentSnapshot;
-  //   setState(() {
-  //     _loading = false;
-  //   });
-  // }
 
   @override
   Widget build(BuildContext context) {
@@ -101,11 +85,6 @@ class _ViewNoteState extends State<ViewNote> {
             child: Column(
               children: [
                 Divider(color: Colors.black),
-                Text(
-                  "Your Note",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 20),
                 Expanded(
                   child: Card(
                     child: Container(
@@ -122,6 +101,16 @@ class _ViewNoteState extends State<ViewNote> {
                             padding: EdgeInsets.only(bottom: 10),
                             child: Row(
                               children: [
+                                Expanded(
+                                  // widthFactor: double.infinity,
+                                  child: Text(
+                                    noteMap["title"] ?? "Your Note",
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
                                 InkWell(
                                   onTap: () {
                                     AwesomeDialog(
@@ -163,8 +152,10 @@ class _ViewNoteState extends State<ViewNote> {
                                 SizedBox(width: 20),
                                 InkWell(
                                   onTap: () {
-                                    editNoteTextController.text =
-                                        noteMap["note"] ?? "";
+                                    editNoteTitleTextController.text =
+                                        noteMap["title"] ?? "";
+                                    editNoteContentTextController.text =
+                                        noteMap["content"] ?? "";
                                     AwesomeDialog(
                                       context: context,
                                       dialogType: DialogType.noHeader,
@@ -185,28 +176,26 @@ class _ViewNoteState extends State<ViewNote> {
                                               ),
                                             ),
                                             SizedBox(height: 12),
-                                            TextField(
-                                              style: TextStyle(
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.w500,
-                                                color: Colors.black,
-                                              ),
+                                            FormInput(
+                                              label: "Note Title",
+                                              hintText: "Enter Your Note Title",
                                               controller:
-                                                  editNoteTextController,
-                                              autofocus: true,
-                                              maxLines:
-                                                  null, // Allow multiple lines
-                                              decoration: InputDecoration(
-                                                border: OutlineInputBorder(),
-                                                labelText: "Note Content",
-                                              ),
+                                                  editNoteTitleTextController,
+                                            ),
+                                            FormInput(
+                                              label: "Note Content",
+                                              hintText:
+                                                  "Enter Your Note Content",
+                                              controller:
+                                                  editNoteContentTextController,
+                                              maxLines: 10,
                                             ),
                                           ],
                                         ),
                                       ),
                                       btnOkText: "Save",
                                       btnOkOnPress: () async {
-                                        if (editNoteTextController.text
+                                        if (editNoteTitleTextController.text
                                             .trim()
                                             .isNotEmpty) {
                                           await FirebaseFirestore.instance
@@ -215,9 +204,14 @@ class _ViewNoteState extends State<ViewNote> {
                                               .collection("notes")
                                               .doc(widget.noteId)
                                               .update({
-                                                'note': editNoteTextController
-                                                    .text
-                                                    .trim(),
+                                                'title':
+                                                    editNoteTitleTextController
+                                                        .text
+                                                        .trim(),
+                                                'content':
+                                                    editNoteContentTextController
+                                                        .text
+                                                        .trim(),
                                               });
                                         }
                                       },
@@ -235,17 +229,16 @@ class _ViewNoteState extends State<ViewNote> {
                             ),
                           ),
                           Divider(color: Colors.grey[400]),
-                          SizedBox(height: 10),
                           Expanded(
-                            child: Container(
-                              width:double.infinity,
-                              padding: EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey),
-                              ),
-                              child: SingleChildScrollView(
+                            child: SingleChildScrollView(
+                              child: Container(
+                                width: double.infinity,
+                                padding: EdgeInsets.all(10),
+                                // decoration: BoxDecoration(
+                                //   border: Border.all(color: Colors.grey),
+                                // ),
                                 child: Text(
-                                  noteMap["note"] ?? "",
+                                  noteMap["content"] ?? "Empty Note",
                                   style: TextStyle(fontSize: 18),
                                 ),
                               ),
