@@ -1,68 +1,57 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_firebase_mastery_2023/addCategory.dart';
 import 'package:flutter_firebase_mastery_2023/auth/login.dart';
 import 'package:flutter_firebase_mastery_2023/auth/signup.dart';
 import 'package:flutter_firebase_mastery_2023/home.dart';
 import 'package:flutter_firebase_mastery_2023/auth/verifyemail.dart';
+import 'package:flutter_firebase_mastery_2023/core/theme/app_theme.dart';
+import 'package:flutter_firebase_mastery_2023/core/utils/app_logger.dart';
 import 'firebase_options.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load environment variables before anything else
+  await dotenv.load(fileName: '.env');
+
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  print("🔥 Firebase initialized successfully!"); // أضف هذا السطر
+  AppLogger.i('Firebase initialized successfully');
 
   runApp(const MyApp());
 }
 
-class MyApp extends StatefulWidget {
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
-  State<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      title: 'Notes App',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        // fontFamily: 'Cairo',
-        textTheme: TextTheme(
-          headlineMedium: TextStyle(
-            fontSize: 30,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
-          bodyLarge: TextStyle(
-            fontSize: 20,
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-          ),
-          bodyMedium: TextStyle(fontSize: 16, color: Colors.black),
-          bodySmall: TextStyle(fontSize: 14, color: Colors.black45),
-        ),
-      ),
+      theme: AppTheme.lightTheme,
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Scaffold(body: Center(child: CircularProgressIndicator()));
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
           }
           if (snapshot.hasData) {
-            return Home();
+            return const Home();
           }
-          return Login();
+          return const Login();
         },
       ),
       routes: {
-        "login": (context) => Login(),
-        "signup": (context) => SignUp(),
-        "home": (context) => Home(),
-        "verifyemail": (context) => Verifyemail(),
-        "addCategory": (context) => AddCategory(),
+        'login': (context) => const Login(),
+        'signup': (context) => const SignUp(),
+        'home': (context) => const Home(),
+        'verifyemail': (context) => const Verifyemail(),
+        'addCategory': (context) => const AddCategory(),
       },
     );
   }

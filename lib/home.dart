@@ -1,311 +1,238 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_firebase_mastery_2023/details.dart';
 import 'package:awesome_dialog/awesome_dialog.dart';
+import 'package:flutter_firebase_mastery_2023/core/utils/app_logger.dart';
 import 'package:flutter_firebase_mastery_2023/notes/notes.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
+
   @override
   State<Home> createState() => _HomeState();
 }
 
 class _HomeState extends State<Home> {
-  bool _loading = false;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey();
+  final TextEditingController _editController = TextEditingController();
+  List<QueryDocumentSnapshot> _categories = [];
+  int _currentIndex = 0;
+
   @override
   void initState() {
-    // TODO: implement initState
+    super.initState();
     FirebaseAuth.instance.authStateChanges().listen((User? user) {
-      if (user == null) {
-        Navigator.pushNamedAndRemoveUntil(context, "login", (route) => false);
-        print('User is currently signed out!');
-      } else {
-        print('User is signed in!');
+      if (user == null && mounted) {
+        AppLogger.i('User signed out — redirecting to login');
+        Navigator.pushNamedAndRemoveUntil(context, 'login', (route) => false);
       }
     });
-    // getData();
-    super.initState();
   }
-
-  // getData() async {
-  //   categories.clear();
-  //   setState(() {
-  //     _loading = true;
-  //   });
-  //   QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-  //       .collection('categories')
-  //       .where("id", isEqualTo: FirebaseAuth.instance.currentUser!.uid)
-  //       .get();
-  //   categories.addAll(querySnapshot.docs);
-  //   setState(() {
-  //     _loading = false;
-  //   });
-  //   // querySnapshot.docs.forEach((doc) {
-  //   //     print(doc["name"]);
-  //   // });
-  // }
 
   @override
   void dispose() {
-    print(" home page dispose");
+    _editController.dispose();
+    AppLogger.d('Home page disposed');
     super.dispose();
   }
 
-  GlobalKey<ScaffoldState> scaffoldKey = GlobalKey();
-  List<QueryDocumentSnapshot> categories = [];
-  int currentIndex = 0;
-  TextEditingController editController = TextEditingController();
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      floatingActionButton: Container(
-        height: 150,
+  Future<void> _deleteCategory(String categoryId) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('categories')
+          .doc(categoryId)
+          .delete();
+      AppLogger.i('Category deleted: $categoryId');
+    } catch (e, st) {
+      AppLogger.e('Failed to delete category', e, st);
+    }
+  }
+
+  Future<void> _renameCategory(String categoryId, String currentName) async {
+    _editController.text = currentName;
+    AwesomeDialog(
+      context: context,
+      dialogType: DialogType.noHeader,
+      animType: AnimType.bottomSlide,
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              margin: EdgeInsets.all(10),
-              child: FloatingActionButton(
-                heroTag: "noteAddBtn",
-                onPressed: () {
-                  Navigator.pushNamed(context, "addCategory");
-                },
-                child: Icon(Icons.add),
-              ),
+            Text(
+              'Rename Category',
+              style: Theme.of(context).textTheme.titleLarge,
             ),
-            FloatingActionButton(
-              heroTag: "noteRefreshBtn",
-              onPressed: () {
-                Navigator.pushNamedAndRemoveUntil(
-                  context,
-                  "home",
-                  (route) => false,
-                );
-              },
-              child: Icon(Icons.refresh),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _editController,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'New name',
+                border: OutlineInputBorder(),
+              ),
             ),
           ],
         ),
       ),
+      btnOkText: 'Save',
+      btnOkOnPress: () async {
+        final newName = _editController.text.trim();
+        if (newName.isEmpty) return;
+        try {
+          await FirebaseFirestore.instance
+              .collection('categories')
+              .doc(categoryId)
+              .update({'name': newName});
+          AppLogger.i('Category renamed: $categoryId → "$newName"');
+        } catch (e, st) {
+          AppLogger.e('Failed to rename category', e, st);
+        }
+      },
+      btnCancelText: 'Cancel',
+      btnCancelOnPress: () {},
+    ).show();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+
+    return Scaffold(
+      key: _scaffoldKey,
       appBar: AppBar(
-        title: Text("Home"),
+        title: const Text('My Notes'),
         actions: [
           IconButton(
+            tooltip: 'Search',
             onPressed: () {
               showSearch(
                 context: context,
-                delegate: CustomSearch(categories: categories),
+                delegate: CategorySearchDelegate(categories: _categories),
               );
             },
-            icon: Icon(Icons.search),
+            icon: const Icon(Icons.search_rounded),
           ),
           IconButton(
-            icon: Icon(Icons.exit_to_app),
-            iconSize: 30,
+            tooltip: 'Sign out',
+            icon: const Icon(Icons.logout_rounded),
             onPressed: () async {
               await FirebaseAuth.instance.signOut();
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                "login",
-                (route) => false,
-              );
+              if (context.mounted) {
+                Navigator.pushNamedAndRemoveUntil(context, 'login', (route) => false);
+              }
             },
           ),
         ],
       ),
-      key: scaffoldKey,
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'addCategoryFab',
+        onPressed: () => Navigator.pushNamed(context, 'addCategory'),
+        icon: const Icon(Icons.create_new_folder_rounded),
+        label: const Text('New Category'),
+      ),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: currentIndex,
-        onTap: (val) {
-          setState(() {
-            currentIndex = val;
-          });
-        },
-        // fixedColor:Colors.blue,
-        backgroundColor: const Color.fromARGB(255, 252, 249, 249),
-        iconSize: 30.0,
-        selectedItemColor: const Color.fromARGB(255, 140, 64, 255),
-        unselectedItemColor: Colors.grey[500],
-        selectedLabelStyle: TextStyle(
-          fontSize: 18,
-          color: const Color.fromARGB(255, 140, 64, 255),
-        ),
-        unselectedLabelStyle: TextStyle(fontSize: 18, color: Colors.grey[500]),
-
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "ـــ"),
-          BottomNavigationBarItem(icon: Icon(Icons.shop), label: "ـــ"),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "ـــ"),
+        currentIndex: _currentIndex,
+        onTap: (val) => setState(() => _currentIndex = val),
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_rounded),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.search_rounded),
+            label: 'Search',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_rounded),
+            label: 'Profile',
+          ),
         ],
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('categories')
-            .where("id", isEqualTo: FirebaseAuth.instance.currentUser!.uid)
+            .where('id', isEqualTo: uid)
             .snapshots(),
         builder: (context, snapshot) {
-          // جاري التحميل
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
           }
-          this.categories = snapshot.data!.docs; // ← تتحدث تلقائياً
-          return Container(
-            padding: EdgeInsets.all(10),
-            child: Column(
-              children: [
-                Divider(color: Colors.black),
-                Text(
-                  "Categories",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
+          if (snapshot.hasError) {
+            AppLogger.e('Categories stream error', snapshot.error);
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                  const SizedBox(height: 12),
+                  Text('Something went wrong', style: theme.textTheme.bodyLarge),
+                ],
+              ),
+            );
+          }
 
-                Expanded(
-                  child: GridView.builder(
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      // mainAxisSpacing: 10,
-                      // crossAxisSpacing: 10,
-                      childAspectRatio: 1.1,
-                    ),
-                    itemCount: categories.length,
-                    itemBuilder: (context, index) {
-                      return InkWell(
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  Notes(categoryId: categories[index].id),
-                            ),
-                          );
-                        },
-                        child: Card(
-                          child: Container(
-                            padding: EdgeInsets.all(5),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(10),
-                              color: Colors.grey[200],
-                            ),
-                            child: Column(
-                              children: [
-                                Row(
-                                  children: [
-                                    InkWell(
-                                      onTap: () {
-                                        AwesomeDialog(
-                                          context: context,
-                                          dialogType: DialogType.warning,
-                                          animType: AnimType.bottomSlide,
-                                          title: "Warning!",
-                                          desc:
-                                              "Are you really want to delete this folder?",
-                                          btnOkText: "confifrm!",
-                                          btnOkOnPress: () async {
-                                            _loading = true;
-                                            FirebaseFirestore.instance
-                                                .collection('categories')
-                                                .doc(categories[index].id)
-                                                .delete();
-                                            // Navigator.pushReplacementNamed(
-                                            //   context,
-                                            //   "home",
-                                            // );
-                                            // getData();
-                                            _loading = false;
-                                          },
-                                          btnCancelOnPress: () {},
-                                        ).show();
-                                      },
-                                      child: Icon(Icons.delete, size: 20),
-                                    ),
-                                    InkWell(
-                                      onTap: () {
-                                        editController.text =
-                                            categories[index]["name"];
-                                        AwesomeDialog(
-                                          context: context,
-                                          dialogType: DialogType.noHeader,
-                                          animType: AnimType.bottomSlide,
-                                          title: "Rename Category",
-                                          body: Padding(
-                                            padding: EdgeInsets.symmetric(
-                                              horizontal: 16,
-                                              vertical: 8,
-                                            ),
-                                            child: Column(
-                                              children: [
-                                                Text(
-                                                  "Rename Category",
-                                                  style: TextStyle(
-                                                    fontSize: 18,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                SizedBox(height: 12),
-                                                TextField(
-                                                  style: TextStyle(
-                                                    fontSize: 15,
-                                                    fontWeight: FontWeight.w500,
-                                                    color: Colors.black,
-                                                  ),
-                                                  controller: editController,
-                                                  autofocus: true,
-                                                  decoration: InputDecoration(
-                                                    border:
-                                                        OutlineInputBorder(),
-                                                    labelText: "New Name",
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          btnOkText: "Save",
-                                          btnOkOnPress: () async {
-                                            if (editController.text
-                                                .trim()
-                                                .isNotEmpty) {
-                                              await FirebaseFirestore.instance
-                                                  .collection('categories')
-                                                  .doc(categories[index].id)
-                                                  // .set({
-                                                  //   'name': editController.text
-                                                  //       .trim(),
-                                                  // },SetOptions(merge: true)
-                                                  // );
-                                                  .update({
-                                                    'name': editController.text
-                                                        .trim(),
-                                                  });
-                                              // getData();
-                                            }
-                                          },
-                                          btnCancelText: "Cancel",
-                                          btnCancelOnPress: () {},
-                                        ).show();
-                                      },
-                                      child: Icon(
-                                        Icons.edit_outlined,
-                                        size: 20,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Image.asset(
-                                  "images/folder.png",
-                                  width: 50,
-                                  height: 50,
-                                  fit: BoxFit.fill,
-                                ),
-                                // Image.asset("images/google_720255.png", width: 100, height: 100),
-                                Text(categories[index]["name"]),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
+          _categories = snapshot.data?.docs ?? [];
+
+          if (_categories.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.folder_open_rounded,
+                    size: 80,
+                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  Text('No categories yet', style: theme.textTheme.titleLarge),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Tap the button below to create your first category.',
+                    style: theme.textTheme.bodyMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return Padding(
+            padding: const EdgeInsets.all(12),
+            child: GridView.builder(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                childAspectRatio: 0.95,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+              ),
+              itemCount: _categories.length,
+              itemBuilder: (context, index) {
+                final category = _categories[index];
+                final name = category['name'] as String? ?? 'Unnamed';
+                return _CategoryCard(
+                  name: name,
+                  onTap: () {
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => Notes(categoryId: category.id),
+                    ));
+                  },
+                  onDelete: () {
+                    AwesomeDialog(
+                      context: context,
+                      dialogType: DialogType.warning,
+                      animType: AnimType.bottomSlide,
+                      title: 'Delete Category',
+                      desc: 'Are you sure you want to delete "$name"?',
+                      btnOkText: 'Delete',
+                      btnOkOnPress: () => _deleteCategory(category.id),
+                      btnCancelOnPress: () {},
+                    ).show();
+                  },
+                  onRename: () => _renameCategory(category.id, name),
+                );
+              },
             ),
           );
         },
@@ -314,129 +241,118 @@ class _HomeState extends State<Home> {
   }
 }
 
-class CustomSearch extends SearchDelegate {
-  final List<QueryDocumentSnapshot> categories;
+// ── Category Card ──────────────────────────────────────────────────────────────
 
-  CustomSearch({required this.categories});
+class _CategoryCard extends StatelessWidget {
+  final String name;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
+  final VoidCallback onRename;
 
-  List<QueryDocumentSnapshot>? filterList;
+  const _CategoryCard({
+    required this.name,
+    required this.onTap,
+    required this.onDelete,
+    required this.onRename,
+  });
+
   @override
-  List<Widget>? buildActions(BuildContext context) {
-    return [
-      IconButton(
-        onPressed: () {
-          print(query);
-          query = "";
-          // Navigator.of(context).pushReplacementNamed("searchdelegate");
-        },
-        icon: Icon(Icons.close),
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  InkWell(
+                    onTap: onRename,
+                    child: Icon(Icons.edit_outlined, size: 18, color: theme.colorScheme.primary),
+                  ),
+                  const SizedBox(width: 6),
+                  InkWell(
+                    onTap: onDelete,
+                    child: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Image.asset('images/folder.png', width: 44, height: 44, fit: BoxFit.contain),
+              const SizedBox(height: 6),
+              Text(
+                name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
       ),
-      // IconButton(onPressed: (){}, icon: Icon(Icons.close)),
-      // IconButton(onPressed: (){}, icon: Icon(Icons.close)),
-    ];
-  }
-
-  @override
-  Widget? buildLeading(BuildContext context) {
-    return IconButton(
-      onPressed: () {
-        // Navigator.of(context).pushReplacementNamed("searchdelegate");
-        close(context, null);
-      },
-      icon: Icon(Icons.arrow_back),
     );
   }
+}
+
+// ── Search Delegate ────────────────────────────────────────────────────────────
+
+class CategorySearchDelegate extends SearchDelegate {
+  final List<QueryDocumentSnapshot> categories;
+  CategorySearchDelegate({required this.categories});
+
+  List<QueryDocumentSnapshot> get _filtered => categories
+      .where((c) => (c['name'] as String).toLowerCase().contains(query.toLowerCase()))
+      .toList();
 
   @override
-  Widget buildResults(BuildContext context) {
-    if (filterList == null || filterList!.isEmpty) {
-      if (query.isEmpty) {
-        return Center(child: Text("Search for a category"));
-      } else {
-        return Center(child: Text("No results found"));
-      }
-    }
+  List<Widget>? buildActions(BuildContext context) => [
+        IconButton(
+          onPressed: () => query = '',
+          icon: const Icon(Icons.close),
+        ),
+      ];
 
+  @override
+  Widget? buildLeading(BuildContext context) => IconButton(
+        onPressed: () => close(context, null),
+        icon: const Icon(Icons.arrow_back),
+      );
+
+  @override
+  Widget buildResults(BuildContext context) => _buildList(context);
+
+  @override
+  Widget buildSuggestions(BuildContext context) => _buildList(context);
+
+  Widget _buildList(BuildContext context) {
+    if (_filtered.isEmpty) {
+      return Center(
+        child: Text(
+          query.isEmpty ? 'Search for a category' : 'No results found',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+      );
+    }
     return ListView.builder(
-      itemCount: filterList!.length,
+      itemCount: _filtered.length,
       itemBuilder: (context, index) {
-        return InkWell(
+        final item = _filtered[index];
+        return ListTile(
+          leading: const Icon(Icons.folder_rounded),
+          title: Text(item['name'] as String),
           onTap: () {
+            close(context, null);
             Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => Notes(categoryId: filterList![index].id),
-              ),
+              MaterialPageRoute(builder: (_) => Notes(categoryId: item.id)),
             );
           },
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(
-                filterList![index]["name"],
-                style: TextStyle(fontSize: 18),
-              ),
-            ),
-          ),
         );
       },
     );
-  }
-
-  @override
-  Widget buildSuggestions(BuildContext context) {
-    if (query == "") {
-      return ListView.builder(
-        itemCount: categories.length,
-        itemBuilder: (context, index) {
-          return InkWell(
-            onTap: () {
-              query = categories[index]["name"];
-              showResults(context);
-            },
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text(
-                  categories[index]["name"],
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 18),
-                ),
-              ),
-            ),
-          );
-        },
-      );
-    } else {
-      filterList = categories
-          .where(
-            (element) => element["name"].toString().toLowerCase().contains(
-              query.toLowerCase(),
-            ),
-          )
-          .toList();
-      return ListView.builder(
-        itemCount: filterList!.length,
-        itemBuilder: (context, index) {
-          return InkWell(
-            onTap: () {
-              query = filterList![index]["name"];
-              showResults(context);
-            },
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text(
-                  filterList![index]["name"],
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 18),
-                ),
-              ),
-            ),
-          );
-        },
-      );
-    }
   }
 }

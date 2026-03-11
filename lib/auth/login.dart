@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_firebase_mastery_2023/component/button.dart';
 import 'package:flutter_firebase_mastery_2023/component/textformfield.dart';
 import 'package:flutter_firebase_mastery_2023/component/switchauth.dart';
+import 'package:flutter_firebase_mastery_2023/core/utils/app_logger.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:awesome_alert/awesome_alert.dart';
 import 'package:awesome_dialog/awesome_dialog.dart';
@@ -15,315 +17,279 @@ class Login extends StatefulWidget {
 }
 
 class _LoginState extends State<Login> {
-  GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
-  GlobalKey<FormState> formstate = GlobalKey<FormState>();
-  TextEditingController? controllerEmail = TextEditingController();
-  TextEditingController? controllerPassword = TextEditingController();
-  bool? status = false;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  bool _rememberMe = false;
   bool _loading = false;
+  bool _obscurePassword = true;
+
   @override
   void initState() {
     super.initState();
-    // استبدل القيمة بـ Web Client ID من Firebase Console
+    // Load the OAuth client ID from .env — never hard-code secrets
     GoogleSignIn.instance.initialize(
-      serverClientId:
-          '738224363416-alfiusqqmrcadvtb7l6l36c0knshrf0c.apps.googleusercontent.com',
+      serverClientId: dotenv.env['GOOGLE_WEB_CLIENT_ID'] ?? '',
     );
   }
 
-  Future<void> signInWithGoogle() async {
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  void _setLoading(bool value) {
+    if (mounted) setState(() => _loading = value);
+  }
+
+  Future<void> _signInWithGoogle() async {
     try {
-      _loading = true;
-      setState(() {});
-
-      // Firebase handles the entire Google OAuth flow internally
+      _setLoading(true);
       await FirebaseAuth.instance.signInWithProvider(GoogleAuthProvider());
-
-      _loading = false;
-      setState(() {});
-
       if (context.mounted) {
-        Navigator.pushNamedAndRemoveUntil(context, "home", (route) => false);
+        Navigator.pushNamedAndRemoveUntil(context, 'home', (route) => false);
       }
     } on FirebaseAuthException catch (e) {
-      _loading = false;
-      setState(() {});
-      // Ignore user cancellation
+      AppLogger.w('Google Sign-In FirebaseAuthException', e);
       if (e.code != 'ERROR_ABORTED_BY_USER' && context.mounted) {
+        _showErrorDialog('Google Sign-In failed: ${e.message}');
+      }
+    } catch (e) {
+      AppLogger.e('Google Sign-In unexpected error', e);
+      if (context.mounted) {
+        _showErrorDialog('An unexpected error occurred. Please try again.');
+      }
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<void> _signInWithEmailPassword() async {
+    if (!_formKey.currentState!.validate()) {
+      AppLogger.d('Login form validation failed');
+      return;
+    }
+    _formKey.currentState!.save();
+
+    try {
+      _setLoading(true);
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      if (!user.emailVerified) {
+        _showEmailVerificationDialog(user);
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Logged in successfully!')),
+          );
+          Navigator.pushReplacementNamed(context, 'home');
+        }
+      }
+    } on FirebaseAuthException catch (e) {
+      AppLogger.w('Login FirebaseAuthException: ${e.code}', e);
+      _handleAuthException(e);
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<void> _sendPasswordReset() async {
+    if (_emailController.text.trim().isEmpty) {
+      _showErrorDialog('Please enter your email address first.');
+      return;
+    }
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(
+        email: _emailController.text.trim(),
+      );
+      if (context.mounted) {
         AwesomeAlert.show(
           context,
-          title: "Error",
-          description: "Google Sign-In failed: ${e.message}",
-          confirmText: "Ok",
+          title: 'Email Sent',
+          description: 'Password reset email sent. Check your inbox.',
+          confirmText: 'OK',
           confirmAction: () => Navigator.of(context).pop(),
         );
       }
     } catch (e) {
-      _loading = false;
-      setState(() {});
-      if (context.mounted) {
-        AwesomeAlert.show(
-          context,
-          title: "Error",
-          description: "An unexpected error occurred: $e",
-          confirmText: "Ok",
-          confirmAction: () => Navigator.of(context).pop(),
-        );
-      }
+      AppLogger.w('Password reset failed', e);
+      _showErrorDialog('Failed to send reset email. Please check the address and try again.');
     }
+  }
+
+  void _showEmailVerificationDialog(User user) {
+    AwesomeDialog(
+      context: context,
+      dialogType: DialogType.error,
+      animType: AnimType.rightSlide,
+      title: 'Email Not Verified',
+      desc: 'Please verify your email address before logging in.',
+      btnCancelText: 'Sign Out',
+      btnCancelOnPress: () async {
+        _setLoading(true);
+        await FirebaseAuth.instance.signOut();
+        AppLogger.i('User signed out — email not verified');
+        if (context.mounted) {
+          Navigator.pushNamedAndRemoveUntil(context, 'login', (route) => false);
+        }
+        _setLoading(false);
+      },
+      btnOkText: 'Resend Email',
+      btnOkOnPress: () async {
+        _setLoading(true);
+        await user.sendEmailVerification();
+        AppLogger.i('Verification email resent');
+        if (context.mounted) {
+          Navigator.pushNamedAndRemoveUntil(context, 'verifyemail', (route) => false);
+        }
+        _setLoading(false);
+      },
+    ).show();
+  }
+
+  void _handleAuthException(FirebaseAuthException e) {
+    String message;
+    switch (e.code) {
+      case 'invalid-credential':
+        message = 'Wrong email or password. Please try again.';
+        break;
+      case 'network-request-failed':
+        message = 'No internet connection. Please check your network.';
+        break;
+      case 'user-disabled':
+        message = 'This account has been disabled. Contact support.';
+        break;
+      case 'too-many-requests':
+        message = 'Too many attempts. Please wait a moment and try again.';
+        break;
+      default:
+        message = 'An error occurred [${e.code}]. Please try again.';
+    }
+    _showErrorDialog(message);
+  }
+
+  void _showErrorDialog(String message) {
+    if (!context.mounted) return;
+    AwesomeAlert.show(
+      context,
+      title: 'Error',
+      description: message,
+      confirmText: 'OK',
+      confirmAction: () => Navigator.of(context).pop(),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      key: scaffoldKey,
-      body: Container(
+      key: _scaffoldKey,
+      body: SafeArea(
         child: ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    margin: EdgeInsets.only(top: 50),
-                    alignment: Alignment.center,
-                    width: 70,
-                    height: 70,
-                    padding: EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.all(Radius.circular(50)),
+            const SizedBox(height: 48),
+            // Avatar icon
+            Center(
+              child: Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.note_alt_outlined,
+                  size: 42,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text('Welcome back', style: theme.textTheme.headlineMedium),
+            const SizedBox(height: 6),
+            Text(
+              'Sign in to continue to your notes.',
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 32),
+            Form(
+              key: _formKey,
+              child: Column(
+                children: [
+                  FormInput(
+                    label: 'Email',
+                    hintText: 'Enter your email',
+                    controller: _emailController,
+                  ),
+                  const SizedBox(height: 8),
+                  // Password with visibility toggle
+                  FormInput(
+                    label: 'Password',
+                    hintText: 'Enter your password',
+                    controller: _passwordController,
+                    obscureText: _obscurePassword,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                        color: theme.colorScheme.primary,
+                      ),
+                      onPressed: () {
+                        setState(() => _obscurePassword = !_obscurePassword);
+                      },
                     ),
-                    // height: 200,
-                    child: Icon(
-                      Icons.person,
-                      size: 40,
-                      color: Colors.grey[600],
-                    ),
                   ),
-                ),
-                SizedBox(height: 20),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20),
-                  child: Text(
-                    "Login",
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                ),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  child: Text(
-                    "Please login to your account.",
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ),
-
-                Form(
-                  // autovalidateMode: AutovalidateMode.always,
-                  key: formstate,
-                  child: Column(
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      FormInput(
-                        label: "Email",
-                        hintText: "Enter your email",
-                        controller: controllerEmail,
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: _rememberMe,
+                            onChanged: (value) {
+                              setState(() => _rememberMe = value ?? false);
+                            },
+                            activeColor: theme.colorScheme.primary,
+                          ),
+                          Text('Remember me', style: theme.textTheme.bodyMedium),
+                        ],
                       ),
-                      FormInput(
-                        label: "Password",
-                        hintText: "Enter your password",
-                        controller: controllerPassword,
-                        obscureText: true,
-                      ),
-                      Padding(
-                        padding: EdgeInsets.only(left: 40, right: 20, top: 1),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                Text(
-                                  "Remember me",
-                                  style: Theme.of(context).textTheme.bodyMedium,
-                                ),
-                                Checkbox(
-                                  value: status,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      status = value;
-                                    });
-                                  },
-                                ),
-                              ],
-                            ),
-                            TextButton(
-                              onPressed: () async {
-                                if (controllerEmail!.text.isEmpty) {
-                                  AwesomeAlert.show(
-                                    context,
-                                    title: "Error",
-                                    description: "Please enter your email",
-                                    confirmText: "Ok",
-                                    confirmAction: () =>
-                                        Navigator.of(context).pop(),
-                                  );
-                                  return;
-                                }
-                                try {
-                                  await FirebaseAuth.instance
-                                      .sendPasswordResetEmail(
-                                        email: controllerEmail!.text,
-                                      );
-                                  AwesomeAlert.show(
-                                    context,
-                                    title: "Success",
-                                    description:
-                                        "Password reset email sent,check your email to reset your password.",
-                                    confirmText: "Ok",
-                                    confirmAction: () =>
-                                        Navigator.of(context).pop(),
-                                  );
-                                } catch (e) {
-                                  AwesomeAlert.show(
-                                    context,
-                                    title: "Error",
-                                    description:
-                                        "Failed to send password reset email,check your email and try again.",
-                                    confirmText: "Ok",
-                                    confirmAction: () =>
-                                        Navigator.of(context).pop(),
-                                  );
-                                }
-                              },
-                              child: Text(
-                                "Forgot password?",
-                                style: Theme.of(context).textTheme.bodyMedium,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (_loading) Center(child: CircularProgressIndicator()),
-                      Button(
-                        label: "Login",
-                        onPressed: () async {
-                          if (formstate.currentState!.validate()) {
-                            formstate.currentState!.save();
-                            try {
-                              _loading = true;
-                              setState(() {});
-                              final credential = await FirebaseAuth.instance
-                                  .signInWithEmailAndPassword(
-                                    email: controllerEmail!.text,
-                                    password: controllerPassword!.text,
-                                  );
-                              setState(() {
-                                _loading = false;
-                              });
-                              if (FirebaseAuth
-                                      .instance
-                                      .currentUser!
-                                      .emailVerified ==
-                                  false) {
-                                AwesomeDialog(
-                                  context: context,
-                                  dialogType: DialogType.error,
-                                  animType: AnimType.rightSlide,
-                                  title: 'Error',
-                                  desc: 'Please verify your email',
-                                  btnCancelOnPress: () async {
-                                    _loading = true;
-                                    setState(() {});
-                                    await FirebaseAuth.instance.signOut();
-                                    _loading = false;
-                                    setState(() {});
-                                    Navigator.pushNamedAndRemoveUntil(
-                                      context,
-                                      "login",
-                                      (route) => false,
-                                    );
-                                  },
-                                  btnOkOnPress: () async {
-                                    _loading = true;
-                                    setState(() {});
-                                    await FirebaseAuth.instance.currentUser!
-                                        .sendEmailVerification();
-                                    _loading = false;
-                                    setState(() {});
-                                    Navigator.pushNamedAndRemoveUntil(
-                                      context,
-                                      "verifyemail",
-                                      (route) => false,
-                                    );
-                                    return;
-                                  },
-                                ).show();
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text("Logged in successfully!"),
-                                    duration: Duration(seconds: 2),
-                                    backgroundColor: const Color.fromARGB(
-                                      255,
-                                      81,
-                                      76,
-                                      175,
-                                    ),
-                                  ),
-                                );
-
-                                Navigator.pushReplacementNamed(context, "home");
-                              }
-                            } on FirebaseAuthException catch (e) {
-                              if (e.code == 'invalid-credential') {
-                                AwesomeAlert.show(
-                                  context,
-                                  title: "Error",
-                                  description: "Wrong Email or Password!",
-                                  confirmText: "Ok!",
-                                  confirmAction: () =>
-                                      Navigator.of(context).pop(),
-                                );
-                                print('No user found for that email.');
-                              } else if (e.code == 'network-request-failed') {
-                                AwesomeAlert.show(
-                                  context,
-                                  title: "Error",
-                                  description: "No internet connection!",
-                                  confirmText: "Ok!",
-                                  confirmAction: () =>
-                                      Navigator.of(context).pop(),
-                                );
-                              } else {
-                                AwesomeAlert.show(
-                                  context,
-                                  title: "Error",
-                                  description:
-                                      "An error occurred [${e.code}]: ${e.message}",
-                                  confirmText: "Ok!",
-                                  confirmAction: () {
-                                    Navigator.of(context).pop();
-                                  },
-                                );
-                              }
-                              setState(() {
-                                _loading = false;
-                              });
-                            }
-                          } else {
-                            print("Not Validated");
-                          }
-                        },
+                      TextButton(
+                        onPressed: _sendPasswordReset,
+                        child: const Text('Forgot password?'),
                       ),
                     ],
                   ),
-                ),
-                Switchauth(
-                  login: true,
-                  onGooglePressed: () {
-                    signInWithGoogle();
-                  },
-                ),
-              ],
+                  const SizedBox(height: 8),
+                  if (_loading) ...[
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 16),
+                  ],
+                  Button(
+                    label: 'Login',
+                    onPressed: _signInWithEmailPassword,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Switchauth(
+              login: true,
+              onGooglePressed: _signInWithGoogle,
             ),
           ],
         ),

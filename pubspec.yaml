@@ -1,5 +1,5 @@
 name: flutter_firebase_mastery_2023
-description: "A new Flutter project."
+description: "A professional Flutter notes application with Firebase backend."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -44,6 +44,9 @@ dependencies:
   awesome_dialog: ^3.3.0
   image_picker: ^1.2.1
   internet_connection_checker: ^3.0.1
+  uuid: ^4.5.3
+  flutter_dotenv: ^5.2.1
+  logger: ^2.5.0
 
 dev_dependencies:
   flutter_test:
@@ -69,6 +72,7 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
+    - .env
     - images/Gemini_Generated_Image_rt1lcrt1lcrt1lcr.png
     - images/codyvex logo.png
     - images/5a4244f818ce7e85ae60ddef.png
@@ -83,8 +87,6 @@ flutter:
     - images/580b585b2edbce24c47b27bd.png
     - images/google_720255.png
     - images/folder.png
-    # - images/a_dot_burr.jpeg
-    # - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

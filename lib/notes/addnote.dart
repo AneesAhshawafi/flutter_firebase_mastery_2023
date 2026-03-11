@@ -2,197 +2,163 @@ import 'package:flutter/material.dart';
 import 'package:flutter_firebase_mastery_2023/component/textformfield.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:awesome_dialog/awesome_dialog.dart';
+import 'package:flutter_firebase_mastery_2023/core/utils/app_logger.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
-class addNote extends StatefulWidget {
-  final String docId;
-  const addNote({super.key, required this.docId});
+/// Screen for adding a new note to a category.
+class AddNoteScreen extends StatefulWidget {
+  final String categoryId;
+  const AddNoteScreen({super.key, required this.categoryId});
 
   @override
-  State<addNote> createState() => _addNoteState();
+  State<AddNoteScreen> createState() => _AddNoteScreenState();
 }
 
-class _addNoteState extends State<addNote> {
-  File? _file;
+class _AddNoteScreenState extends State<AddNoteScreen> {
+  File? _imageFile;
   final ImagePicker _picker = ImagePicker();
-  GlobalKey<FormState> formKey = GlobalKey<FormState>();
-  TextEditingController titleNoteController = TextEditingController();
-  TextEditingController contentNoteController = TextEditingController();
-  bool? _loading = false;
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _contentController = TextEditingController();
+  bool _loading = false;
+
   @override
-  dispose() {
-    titleNoteController.dispose();
-    contentNoteController.dispose();
+  void dispose() {
+    _titleController.dispose();
+    _contentController.dispose();
     super.dispose();
   }
 
-  Future<void> getImage(ImageSource source) async {
-    final XFile? image;
-    // Pick an image.
-    if (source == ImageSource.gallery) {
-      image = await _picker.pickImage(source: source);
-    } else {
-      // Capture a photo.
-      image = await _picker.pickImage(source: source);
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final XFile? image = await _picker.pickImage(source: source);
+      if (image != null) {
+        setState(() => _imageFile = File(image.path));
+      }
+    } catch (e, st) {
+      AppLogger.w('Image picker failed', e, st);
     }
-    _file = File(image!.path);
-    setState(() {});
   }
 
-  Future<void> addNote() {
-    CollectionReference notes = FirebaseFirestore.instance
-        .collection('categories')
-        .doc(widget.docId)
-        .collection("notes");
-    // Call the user's CollectionReference to add a new user
-    setState(() {
-      _loading = true;
-    });
-    return notes
-        .add({
-          'title': titleNoteController.text,
-          'content': contentNoteController.text,
-        })
-        .then((value) {
-          setState(() {
-            _loading = false;
+  Future<void> _saveNote() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _loading = true);
+    try {
+      await FirebaseFirestore.instance
+          .collection('categories')
+          .doc(widget.categoryId)
+          .collection('notes')
+          .add({
+            'title': _titleController.text.trim(),
+            'content': _contentController.text.trim(),
+            'createdAt': FieldValue.serverTimestamp(),
           });
-          // AwesomeDialog(
-          //   context: context,
-          //   title: "Success",
-          //   btnOkText: "OK",
-          //   btnOkOnPress: () {
-          //     titleNoteController.clear();
-          //     Navigator.pop(context);
-          //   },
-          //   body: Text("Note Added"),
-          //   dialogType: DialogType.success,
-          // ).show();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              duration: Duration(seconds: 2),
-              backgroundColor: Colors.green,
-              content: Text("Note Added Successfully!"),
-            ),
-          );
-          titleNoteController.clear();
-          contentNoteController.clear();
-          Navigator.pop(context);
-        })
-        .catchError((error) {
-          setState(() {
-            _loading = false;
-          });
-          AwesomeDialog(
-            context: context,
-            title: "Error",
-            body: Text("Failed to add your note"),
-            dialogType: DialogType.error,
-          ).show();
-        });
+      AppLogger.i('Note added to category ${widget.categoryId}');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Note added successfully!')),
+        );
+        Navigator.of(context).pop();
+      }
+    } catch (e, st) {
+      AppLogger.e('Failed to add note', e, st);
+      if (mounted) {
+        AwesomeDialog(
+          context: context,
+          title: 'Error',
+          body: const Text('Failed to save your note. Please try again.'),
+          dialogType: DialogType.error,
+        ).show();
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text("Add Note")),
-      body: Container(
-        // padding: EdgeInsets.all(20),
-        margin: EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Expanded(
-              child: Form(
-                key: formKey,
-                child: ListView(
-                  children: [
-                    FormInput(
-                      label: "Note Title",
-                      hintText: "Enter Your Note Title",
-                      controller: titleNoteController,
-                    ),
-                    SizedBox(height: 10),
-                    FormInput(
-                      label: "Note Content",
-                      hintText: "Enter Your Note Content",
-                      controller: contentNoteController,
-                      maxLines: 20,
-                    ),
-
-                    // TextField(
-                    //   style: TextStyle(
-                    //     fontSize: 15,
-                    //     fontWeight: FontWeight.w500,
-                    //     color: Colors.black,
-                    //   ),
-                    //   controller: bodytitleNoteController,
-                    //   autofocus: true,
-                    //   maxLines: null, // Allow multiple lines
-                    //   decoration: InputDecoration(
-                    //     border: OutlineInputBorder(),
-                    //     labelText: "Note Content",
-                    //   ),
-                    // ),
-                    Card(
-                      margin: EdgeInsets.all(20),
-                      child: Container(
-                        padding: EdgeInsets.all(10),
-                        child: _file != null
-                            ? Image.file(
-                                _file!,
-                                height: 150,
-                                fit: BoxFit.contain,
-                              )
-                            : Text("no image"),
-                      ),
-                    ),
-                    ElevatedButton(
-                      onPressed: () {
-                        AwesomeDialog(
-                          context: context,
-                          title: "Choose Source",
-                          dialogType: DialogType.noHeader,
-                          animType: AnimType.bottomSlide,
-                          btnOkOnPress: () {},
-                          body: Container(
-                            padding: EdgeInsets.all(10),
-                            child: Column(
-                              children: [
-                                IconButton(
-                                  onPressed: () {
-                                    getImage(ImageSource.camera);
-                                  },
-                                  icon: Icon(Icons.camera_alt_outlined),
-                                ),
-                                IconButton(
-                                  onPressed: () {
-                                    getImage(ImageSource.gallery);
-                                  },
-                                  icon: Icon(Icons.browse_gallery_outlined),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ).show();
-                      },
-                      child: Text("Get Image"),
-                    ),
-
-                    if (_loading == true) CircularProgressIndicator(),
-                    ElevatedButton(
-                      onPressed: () {
-                        if (formKey.currentState!.validate()) {
-                          addNote();
-                        }
-                      },
-                      child: Text("Add Note"),
-                    ),
-                  ],
+      appBar: AppBar(title: const Text('Add Note')),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Form(
+            key: _formKey,
+            child: ListView(
+              children: [
+                FormInput(
+                  label: 'Note Title',
+                  hintText: 'Enter note title',
+                  controller: _titleController,
                 ),
-              ),
+                const SizedBox(height: 12),
+                FormInput(
+                  label: 'Note Content',
+                  hintText: 'Write your note here...',
+                  controller: _contentController,
+                  maxLines: 12,
+                  minLines: 6,
+                ),
+                const SizedBox(height: 16),
+                // Image picker section
+                if (_imageFile != null)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.file(_imageFile!, height: 160, fit: BoxFit.cover),
+                  ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.image_outlined),
+                  label: Text(_imageFile == null ? 'Attach image' : 'Change image'),
+                  onPressed: () {
+                    AwesomeDialog(
+                      context: context,
+                      title: 'Choose Source',
+                      dialogType: DialogType.noHeader,
+                      animType: AnimType.bottomSlide,
+                      btnOkOnPress: () {},
+                      body: Column(
+                        children: [
+                          ListTile(
+                            leading: const Icon(Icons.camera_alt_outlined),
+                            title: const Text('Camera'),
+                            onTap: () {
+                              Navigator.of(context).pop();
+                              _pickImage(ImageSource.camera);
+                            },
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.photo_library_outlined),
+                            title: const Text('Gallery'),
+                            onTap: () {
+                              Navigator.of(context).pop();
+                              _pickImage(ImageSource.gallery);
+                            },
+                          ),
+                        ],
+                      ),
+                    ).show();
+                  },
+                ),
+                const SizedBox(height: 24),
+                if (_loading)
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 12),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                ElevatedButton(
+                  onPressed: _loading ? null : _saveNote,
+                  child: Text(
+                    'Save Note',
+                    style: theme.textTheme.labelLarge,
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

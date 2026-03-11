@@ -8,6 +8,7 @@ class FormInput extends StatelessWidget {
   final bool obscureText;
   final int? maxLines;
   final int? minLines;
+  final Widget? suffixIcon;
 
   const FormInput({
     super.key,
@@ -18,6 +19,7 @@ class FormInput extends StatelessWidget {
     this.obscureText = false,
     this.maxLines,
     this.minLines,
+    this.suffixIcon,
   });
 
   @override
@@ -56,10 +58,10 @@ class FormInput extends StatelessWidget {
             maxLines: maxLines??1,
             minLines:minLines??1,
             decoration: InputDecoration(
-
-              label:Text(label!, style: Theme.of(context).textTheme.bodyLarge),
+              label: Text(label!, style: Theme.of(context).textTheme.bodyLarge),
               hintText: hintText!,
               hintStyle: Theme.of(context).textTheme.bodySmall,
+              suffixIcon: suffixIcon,
               filled: true,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(50),
@@ -77,7 +79,7 @@ class FormInput extends StatelessWidget {
               ),
               errorBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(50),
-                borderSide: BorderSide(color: Colors.redAccent),
+                borderSide: const BorderSide(color: Colors.redAccent),
               ),
             ),
           ),

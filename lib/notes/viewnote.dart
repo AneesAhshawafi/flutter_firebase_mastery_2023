@@ -12,22 +12,15 @@ class ViewNote extends StatefulWidget {
 }
 
 class _ViewNoteState extends State<ViewNote> {
-  bool _loading = false;
-  GlobalKey<ScaffoldState> scaffoldKey = GlobalKey();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey();
   DocumentSnapshot? noteData;
-  int currentIndex = 0;
-  TextEditingController editNoteTitleTextController = TextEditingController();
-  TextEditingController editNoteContentTextController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-  }
+  final TextEditingController _editTitleController = TextEditingController();
+  final TextEditingController _editContentController = TextEditingController();
 
   @override
   void dispose() {
-    editNoteTitleTextController.dispose();
-    editNoteContentTextController.dispose();
+    _editTitleController.dispose();
+    _editContentController.dispose();
     super.dispose();
   }
 
@@ -35,36 +28,9 @@ class _ViewNoteState extends State<ViewNote> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          //header
-          children: [Expanded(child: Text("Current Note"))],
-        ),
+        title: const Text('Note'),
       ),
-      key: scaffoldKey,
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: currentIndex,
-        onTap: (val) {
-          setState(() {
-            currentIndex = val;
-          });
-        },
-        // fixedColor:Colors.blue,
-        backgroundColor: const Color.fromARGB(255, 252, 249, 249),
-        iconSize: 30.0,
-        selectedItemColor: const Color.fromARGB(255, 140, 64, 255),
-        unselectedItemColor: Colors.grey[500],
-        selectedLabelStyle: TextStyle(
-          fontSize: 18,
-          color: const Color.fromARGB(255, 140, 64, 255),
-        ),
-        unselectedLabelStyle: TextStyle(fontSize: 18, color: Colors.grey[500]),
-
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "ـــ"),
-          BottomNavigationBarItem(icon: Icon(Icons.shop), label: "ـــ"),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "ـــ"),
-        ],
-      ),
+      key: _scaffoldKey,
       body: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance
             .collection('categories')
@@ -120,25 +86,15 @@ class _ViewNoteState extends State<ViewNote> {
                                       title: "Warning!",
                                       desc:
                                           "Are you really want to delete this note?",
-                                      btnOkText: "confirm!",
+                                      btnOkText: 'Delete',
                                       btnOkOnPress: () async {
-                                        setState(() {
-                                          _loading = true;
-                                        });
                                         await FirebaseFirestore.instance
                                             .collection('categories')
                                             .doc(widget.categoryId)
-                                            .collection("notes")
+                                            .collection('notes')
                                             .doc(widget.noteId)
                                             .delete();
-                                        if (mounted) {
-                                          setState(() {
-                                            _loading = false;
-                                          });
-                                          Navigator.of(
-                                            context,
-                                          ).pop(); // Back to notes list
-                                        }
+                                        if (mounted) Navigator.of(context).pop();
                                       },
                                       btnCancelOnPress: () {},
                                     ).show();
@@ -152,9 +108,9 @@ class _ViewNoteState extends State<ViewNote> {
                                 SizedBox(width: 20),
                                 InkWell(
                                   onTap: () {
-                                    editNoteTitleTextController.text =
+                                    _editTitleController.text =
                                         noteMap["title"] ?? "";
-                                    editNoteContentTextController.text =
+                                    _editContentController.text =
                                         noteMap["content"] ?? "";
                                     AwesomeDialog(
                                       context: context,
@@ -180,14 +136,14 @@ class _ViewNoteState extends State<ViewNote> {
                                               label: "Note Title",
                                               hintText: "Enter Your Note Title",
                                               controller:
-                                                  editNoteTitleTextController,
+                                                  _editTitleController,
                                             ),
                                             FormInput(
                                               label: "Note Content",
                                               hintText:
                                                   "Enter Your Note Content",
                                               controller:
-                                                  editNoteContentTextController,
+                                                  _editContentController,
                                               maxLines: 10,
                                             ),
                                           ],
@@ -195,7 +151,7 @@ class _ViewNoteState extends State<ViewNote> {
                                       ),
                                       btnOkText: "Save",
                                       btnOkOnPress: () async {
-                                        if (editNoteTitleTextController.text
+                                        if (_editTitleController.text
                                             .trim()
                                             .isNotEmpty) {
                                           await FirebaseFirestore.instance
@@ -205,11 +161,11 @@ class _ViewNoteState extends State<ViewNote> {
                                               .doc(widget.noteId)
                                               .update({
                                                 'title':
-                                                    editNoteTitleTextController
+                                                    _editTitleController
                                                         .text
                                                         .trim(),
                                                 'content':
-                                                    editNoteContentTextController
+                                                    _editContentController
                                                         .text
                                                         .trim(),
                                               });
